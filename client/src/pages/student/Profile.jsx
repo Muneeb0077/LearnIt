@@ -4,12 +4,55 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Course from './Course'
+import { useLoadUserQuery, useUpdateUserMutation } from '@/features/api/authApi'
+import { toast } from 'sonner'
 
 const Profile = () => {
-  const updateUserIsLoading = false;
-  const enrolledCourses = [1,2];
+
+  const { data, isLoading, refetch } = useLoadUserQuery();
+  const [updateUser, { data: updatedUserData, isLoading: updateUserIsLoading, error, isError, isSuccess }] = useUpdateUserMutation();
+  const [name, setName] = useState("");
+  const [photo, setPhoto] = useState("");
+
+  const onChangeHandler = (e) => {
+    const file = e.target.files?.[0];
+    if (file) setPhoto(file);
+  };
+
+  const updateUserHandler = async () => {
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("profilePhoto", photo);
+    await updateUser(formData);
+  }
+
+  useEffect(() => {
+
+    refetch();
+
+  }, [refetch])
+
+  useEffect(() => {
+    if (isSuccess) {
+      refetch();
+      setName("");
+      setPhoto(null);
+      toast.success(data.message || "Yooo! Profile updated successfully.");
+    }
+    if (isError) {
+      toast.error(error.message || "Oops! Something went wrong.");
+    }
+
+  }, [error, updatedUserData, isSuccess, isError])
+
+
+
+  if (isLoading) return <h1>Loading...</h1>;
+
+  const user = data && data.user;
+
   return (
     <div className='max-w-4xl my-24 mx-auto px-4'>
       <h1 className="font-bold text-2xl text-center md:text-left">PROFILE</h1>
@@ -17,7 +60,7 @@ const Profile = () => {
         <div className="flex flex-col items-center">
           <Avatar className="h-24 w-24 md:h-32 md:w-32 mb-4">
             <AvatarImage
-              src={"https://github.com/shadcn.png"}
+              src={user?.photoURL || "https://github.com/shadcn.png"}
               alt="@shadcn"
             />
             <AvatarFallback>CN</AvatarFallback>
@@ -27,19 +70,19 @@ const Profile = () => {
           <div className='mb-2'>
             <h1 className='font-semibold text-gray-900 dark:text-gray-100'>
               Name:
-              <span className='font-normal text-gray-700 dark:text-gray-300 ml-2'>King Barouuu</span>
+              <span className='font-normal text-gray-700 dark:text-gray-300 ml-2'>{user.name}</span>
             </h1>
           </div>
           <div className='mb-2'>
             <h1 className='font-semibold text-gray-900 dark:text-gray-100'>
               Email:
-              <span className='font-normal text-gray-700 dark:text-gray-300 ml-2'>barouuuking@gmail.com</span>
+              <span className='font-normal text-gray-700 dark:text-gray-300 ml-2'>{user.email}</span>
             </h1>
           </div>
           <div className='mb-2'>
             <h1 className='font-semibold text-gray-900 dark:text-gray-100'>
               Role:
-              <span className='font-normal text-gray-700 dark:text-gray-300 ml-2'>Instructor</span>
+              <span className='font-normal text-gray-700 dark:text-gray-300 ml-2'>{user.role.toUpperCase()}</span>
             </h1>
           </div>
           <Dialog>
@@ -62,7 +105,7 @@ const Profile = () => {
                   <Input
                     type="text"
                     value={name}
-                    onChange=""
+                    onChange={(e) => setName(e.target.value)}
                     placeholder="Name"
                     className="col-span-3"
                   />
@@ -70,7 +113,7 @@ const Profile = () => {
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label>Profile Photo</Label>
                   <Input
-                    onChange=""
+                    onChange={onChangeHandler}
                     type="file"
                     accept="image/*"
                     className="col-span-3"
@@ -80,7 +123,7 @@ const Profile = () => {
               <DialogFooter>
                 <Button
                   disabled={updateUserIsLoading}
-                  onClick=""
+                  onClick={updateUserHandler}
                 >
                   {updateUserIsLoading ? (
                     <>
@@ -99,10 +142,10 @@ const Profile = () => {
       <div>
         <h1 className="font-medium text-lg">Courses you're enrolled in</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-5">
-          {enrolledCourses.length === 0 ? (
+          {user.enrolledCourses.length === 0 ? (
             <h1>You haven't enrolled yet</h1>
           ) : (
-            enrolledCourses.map((course) => (
+            user.enrolledCourses.map((course) => (
               <Course course={course} key={course._id} />
             ))
           )}
